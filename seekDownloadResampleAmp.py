@@ -1,9 +1,34 @@
+# this script imporves the previous version replaceung the list of downloaded 
+# file with a database storing this information. The db also:
+# 1 - reduces the amount of memory allocated to podcasts
+# 2 - reduces the amount of podcasts which are available to listen again
+# 3 - occupies less space in memory than the whole mp3 files
+# 4 - allows to not resample the files to save space but reducing quality
+
 import requests
 from bs4 import BeautifulSoup
-from subprocess import call
 import os
+from subprocess import call
 
+# add database storing the podcast which were already downloaded (and therefore 
+# already heard)
 dir2store = "/media/%s/SANDISK SAN/PODCASTS/naturePodcasts/"%(os.environ['LOGNAME'])
+# remove already heard files
+rc = call(["rm *.mp3"])
+
+import sqlite3
+conn = sqlite3.connect("%sdownloadedMp3.sqlite" % (dir2store))
+c = conn.cursor()
+
+c.execute('''CREATE TABLE IF NOT EXISTS mp3
+             (id INTEGER NOT NULL PRIMARY KEY,
+             title TEXT UNIQUE, 
+             dt datetime
+             );
+             ''')
+# add date:
+#ALTER TABLE mp3 ADD COLUMN dt timestamp DEFAULT NULL
+datetime('now','localtime');
 
 try:
   url = 'http://www.nature.com/nature/podcast/archive.html'
@@ -11,7 +36,9 @@ try:
   req = requests.get(url, headers = headers)
   soup = BeautifulSoup(req.text, "html.parser")
   links = soup.findAll('a')
-  counter = 0
+  c.execute("SELECT COUNT(*) FROM mp3") # returns a line too much
+  counter = c.fetchone()[0]
+  startCounter = counter
   for tmp in links:
 		if 'mp3' in tmp.text.encode('utf-8'):
 			# I don't really like futures, so I get rid of them
@@ -20,7 +47,11 @@ try:
 				continue # this does not work if using tmp.text.encode('utf-8')
 			linkName = tmp['href'].encode('utf-8')
 			fileName = linkName.rsplit('/', 1)[-1]
-			if os.path.isfile("%sc_%s" % (dir2store, fileName)):
+			print fileName
+			c.execute("INSERT  OR IGNORE INTO mp3(title, dt) VALUES (?, datetime('now','localtime'))", (fileName,))
+			c.execute('SELECT COUNT(*) FROM mp3')
+			newCounter = c.fetchone()[0]
+			if ( newCounter <= counter) : 
 				print "%s already downloaded" % fileName
 				continue
 			else:
@@ -28,18 +59,12 @@ try:
 				mp3file = requests.get(tmp['href'], headers = headers).content
 				with open("%s%s" % (dir2store, fileName),'wb') as output:
 					output.write(mp3file)
-				# make mono	
-				#rc = call(["sox", "-v", "2", "%s%s" % (dir2store, fileName), "-r", "16000", 
-							 #"-c", "1", "%sc_%s" % (dir2store, fileName)])
-				# keep stereo
-				rc = call(["sox", "-v", "2", "%s%s" % (dir2store, fileName), "-r", "16000", 
-							 "%sc_%s" % (dir2store, fileName)])
-				rc = call(["rm", "%s%s" % (dir2store, fileName)])
 				counter = counter + 1
-		podcasts2download	= 5	
-		if counter > podcasts2download:
+		if (counter-startCounter) > 5:
 			break
 except Exception as e:
   print(str(e))
   
+conn.commit()
+conn.close()
 
