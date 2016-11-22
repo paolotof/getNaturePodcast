@@ -1,20 +1,19 @@
-# this script imporves the previous version replaceung the list of downloaded 
-# file with a database storing this information. The db also:
-# 1 - reduces the amount of memory allocated to podcasts
-# 2 - reduces the amount of podcasts which are available to listen again
-# 3 - occupies less space in memory than the whole mp3 files
-# 4 - allows to not resample the files to save space but reducing quality
-
 import requests
 from bs4 import BeautifulSoup
 import os
 from subprocess import call
 
+# TODO: add functionality to include file manually downloaded
+
 # add database storing the podcast which were already downloaded (and therefore 
 # already heard)
 dir2store = "/media/%s/SANDISK SAN/PODCASTS/naturePodcasts/"%(os.environ['LOGNAME'])
-# remove already heard files
-rc = call(["rm *.mp3"])
+
+# delete the podcasts which were already listened otherwise the list grows exponentially
+filesList = [f for f in os.listdir(dir2store) 
+										if (f.endswith('.mp3') and not f.startswith('.'))]
+for fileName in filesList:
+	rc = call(["rm", "%s%s" % (dir2store, fileName)])
 
 import sqlite3
 conn = sqlite3.connect("%sdownloadedMp3.sqlite" % (dir2store))
@@ -22,13 +21,10 @@ c = conn.cursor()
 
 c.execute('''CREATE TABLE IF NOT EXISTS mp3
              (id INTEGER NOT NULL PRIMARY KEY,
-             title TEXT UNIQUE, 
-             dt datetime
+             title TEXT UNIQUE,
+             date datetime
              );
              ''')
-# add date:
-#ALTER TABLE mp3 ADD COLUMN dt timestamp DEFAULT NULL
-datetime('now','localtime');
 
 try:
   url = 'http://www.nature.com/nature/podcast/archive.html'
@@ -36,7 +32,7 @@ try:
   req = requests.get(url, headers = headers)
   soup = BeautifulSoup(req.text, "html.parser")
   links = soup.findAll('a')
-  c.execute("SELECT COUNT(*) FROM mp3") # returns a line too much
+  c.execute("SELECT COUNT(*) FROM mp3") # return a line too much
   counter = c.fetchone()[0]
   startCounter = counter
   for tmp in links:
@@ -48,7 +44,8 @@ try:
 			linkName = tmp['href'].encode('utf-8')
 			fileName = linkName.rsplit('/', 1)[-1]
 			print fileName
-			c.execute("INSERT  OR IGNORE INTO mp3(title, dt) VALUES (?, datetime('now','localtime'))", (fileName,))
+			c.execute("INSERT  OR IGNORE INTO mp3(title, date) VALUES (?, datetime('now','localtime'))", 
+						 (fileName,))
 			c.execute('SELECT COUNT(*) FROM mp3')
 			newCounter = c.fetchone()[0]
 			if ( newCounter <= counter) : 
@@ -67,4 +64,3 @@ except Exception as e:
   
 conn.commit()
 conn.close()
-
