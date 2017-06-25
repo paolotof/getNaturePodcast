@@ -1,24 +1,17 @@
 import requests
 from bs4 import BeautifulSoup
 import os
-from subprocess import call
+# add functionality to include file manually downloaded
 
-# TODO: add functionality to include file manually downloaded
-
-# add database storing the podcast which were already downloaded (and therefore 
+# add database storing the podcast which were already downloaded (and therefore
 # already heard)
-dir2store = "/media/%s/SANDISK SAN/PODCASTS/naturePodcasts/"%(os.environ['LOGNAME'])
-
-# delete the podcasts which were already listened otherwise the list grows exponentially
-filesList = [f for f in os.listdir(dir2store) 
-										if (f.endswith('.mp3') and not f.startswith('.'))]
-for fileName in filesList:
-	rc = call(["rm", "%s%s" % (dir2store, fileName)])
 
 import sqlite3
+#conn = sqlite3.connect("%sdownloadedMp3.db" % (dir2store))
 conn = sqlite3.connect("%sdownloadedMp3.sqlite" % (dir2store))
 c = conn.cursor()
 
+# Create table
 c.execute('''CREATE TABLE IF NOT EXISTS mp3
              (id INTEGER NOT NULL PRIMARY KEY,
              title TEXT UNIQUE,
@@ -44,11 +37,11 @@ try:
 			linkName = tmp['href'].encode('utf-8')
 			fileName = linkName.rsplit('/', 1)[-1]
 			print fileName
-			c.execute("INSERT  OR IGNORE INTO mp3(title, date) VALUES (?, datetime('now','localtime'))", 
+			c.execute("INSERT  OR IGNORE INTO mp3(title, date) VALUES (?, datetime('now','localtime'))",
 						 (fileName,))
 			c.execute('SELECT COUNT(*) FROM mp3')
 			newCounter = c.fetchone()[0]
-			if ( newCounter <= counter) : 
+			if ( newCounter <= counter) :
 				print "%s already downloaded" % fileName
 				continue
 			else:
@@ -61,6 +54,6 @@ try:
 			break
 except Exception as e:
   print(str(e))
-  
+
 conn.commit()
 conn.close()
