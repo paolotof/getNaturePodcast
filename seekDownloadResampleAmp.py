@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import os
+
 # add functionality to include file manually downloaded
 
 # add database storing the podcast which were already downloaded (and therefore
@@ -8,7 +9,7 @@ import os
 # from sys import platform
 import sys
 dir2store = "/media/%s/"%(os.environ['LOGNAME'])
-if platform == "darwin":
+if sys.platform == "darwin":
 	dir2store = "/Volumes/"
 dir2store = "%sSANDISK SAN/PODCASTS/naturePodcasts/"%(dir2store)
 
