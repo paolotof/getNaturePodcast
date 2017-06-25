@@ -1,17 +1,25 @@
-import requests
-from bs4 import BeautifulSoup
-import os
-
-# add functionality to include file manually downloaded
-
 # add database storing the podcast which were already downloaded (and therefore
 # already heard)
 # from sys import platform
 import sys
+import os
 dir2store = "/media/%s/"%(os.environ['LOGNAME'])
 if sys.platform == "darwin":
 	dir2store = "/Volumes/"
 dir2store = "%sSANDISK SAN/PODCASTS/naturePodcasts/"%(dir2store)
+
+# delete the podcasts which were already listened otherwise the list grows exponentially
+# make the list
+if len(sys.argv) <= 1:
+	print "old files kept"
+else:
+	filesList = [f for f in os.listdir(dir2store)
+							 if (f.endswith('.mp3') and not f.startswith('.'))]
+	# delete the files
+	from subprocess import call
+	for fileName in filesList:
+		rc = call(["rm", "%s%s" % (dir2store, fileName)])
+	print "old files deleted"
 
 import sqlite3
 #conn = sqlite3.connect("%sdownloadedMp3.db" % (dir2store))
@@ -27,6 +35,8 @@ c.execute('''CREATE TABLE IF NOT EXISTS mp3
              ''')
 
 try:
+  import requests
+  from bs4 import BeautifulSoup
   url = 'http://www.nature.com/nature/podcast/archive.html'
   headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.17 (KHTML, like Gecko) Chrome/24.0.1312.27 Safari/537.17'}
   req = requests.get(url, headers = headers)
