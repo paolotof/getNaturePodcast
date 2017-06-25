@@ -5,6 +5,12 @@ import os
 
 # add database storing the podcast which were already downloaded (and therefore
 # already heard)
+# from sys import platform
+import sys
+dir2store = "/media/%s/"%(os.environ['LOGNAME'])
+if platform == "darwin":
+	dir2store = "/Volumes/"
+dir2store = "%sSANDISK SAN/PODCASTS/naturePodcasts/"%(dir2store)
 
 import sqlite3
 #conn = sqlite3.connect("%sdownloadedMp3.db" % (dir2store))
